@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  ai:
+    build: .
+    volumes:
+      - .:/app
+    ports:
+      - "9000:9000"

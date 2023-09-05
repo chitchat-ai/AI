@@ -5,14 +5,13 @@ from langchain.chat_models import ChatOpenAI
 from langchain.memory import CombinedMemory
 from pydantic import BaseModel
 
-from ai.classes import (
+from .classes import (
     CustomCallbackHandler,
     CustomConversationChain,
     ShortChatMessageHistory,
     ShortConversationBufferMemory,
 )
-from chats.models import Message, VirtualFriend
-from users.models import User
+from .schemas import RequestData, ResponseMessage
 
 DESCRIPTION_TEMPLATE = '{description}\n\n'
 
@@ -25,12 +24,9 @@ SYSTEM_TEMPLATE = DESCRIPTION_TEMPLATE + SHORT_MEMORY_TEMPLATE
 
 class AIManager(BaseModel):
     openai_api_key: str
-    chat_id: int
-    virtual_friend: VirtualFriend
-    user: User
-    user_text: str
+    request_data: RequestData
 
-    def create_bot_message(self) -> Message:
+    def get_bot_message(self) -> ResponseMessage:
         handler = CustomCallbackHandler(history=self.short_memory.chat_memory)
         llm = ChatOpenAI(temperature=0.8, openai_api_key=self.openai_api_key)
 
@@ -41,20 +37,28 @@ class AIManager(BaseModel):
             prompt=self.prompt,
         )
         conversation.run(
-            description=self.virtual_friend.gpt_description,
-            input=self.user_text,
+            description=self.description,
+            input=self.user_message_text,
             callbacks=[handler],
         )
-        return self.short_memory.chat_memory.new_bot_message
+        return self.short_memory.chat_memory.response_message
 
 
     @cached_property
     def human_prefix(self) -> str:
-        return self.user.nickname
+        return self.request_data.user.nickname
 
     @cached_property
     def ai_prefix(self) -> str:
-        return self.virtual_friend.name
+        return self.request_data.virtual_friend.name
+
+    @cached_property
+    def description(self) -> str:
+        return self.request_data.virtual_friend.gpt_description
+
+    @cached_property
+    def user_message_text(self) -> str:
+        return self.request_data.user.user_message_text
 
     # @cached_property
     # def long_memory(self) -> LongVectorStoreRetrieverMemory:
@@ -72,7 +76,7 @@ class AIManager(BaseModel):
     @cached_property
     def short_memory(self) -> ShortConversationBufferMemory:
         return ShortConversationBufferMemory(
-            chat_memory=ShortChatMessageHistory(chat_id=self.chat_id),
+            chat_memory=ShortChatMessageHistory(request_messages=self.request_data.messages),
             human_prefix=self.human_prefix,
             ai_prefix=self.ai_prefix,
         )
