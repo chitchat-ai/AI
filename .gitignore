@@ -1,0 +1,40 @@
+# Ignore virtual environments
+venv/
+env/
+
+# Ignore Node.js dependencies
+frontend/node_modules/
+
+# Ignore built frontend files
+frontend/build/
+
+# Ignore Python cache files
+src/__pycache__/
+*.py[cod]
+
+# Ignore local development files
+.env
+
+# Ignore IDE-specific files
+.idea/
+.vscode/
+
+# Ignore package lock files
+package-lock.json
+yarn.lock
+
+# Ignore logs and other generated files
+*.log
+*.log.*
+logs/
+*.pid
+*.seed
+*.pid.lock
+.coverage
+
+# Ignore sensitive or personal files
+secrets.txt
+config.json
+
+# Ignore any other files or directories you want to exclude
+.ruff_cache/

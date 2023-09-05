@@ -2,7 +2,7 @@ from typing import Any
 
 from langchain import ConversationChain
 from langchain.callbacks.base import BaseCallbackHandler
-from langchain.memory import ConversationBufferMemory, VectorStoreRetrieverMemory
+from langchain.memory import ConversationBufferMemory
 from langchain.schema import (
     BaseChatMessageHistory,
     BaseMessage,
@@ -10,42 +10,37 @@ from langchain.schema import (
     messages_from_dict,
 )
 from pydantic import BaseModel, Field, root_validator
-from sqlalchemy import asc
 
-from chats.enums import MessageType
-from chats.models import Message
-from chats.schemas import MessageCreate
-from database.local_session import session
+from src.enums import MessageType
+from src.schemas import RequestMessage, ResponseMessage
 
 
-class LongVectorStoreRetrieverMemory(VectorStoreRetrieverMemory):
-    memory_key = 'long_memory'
-    input_key = 'input'
-
-    ai_prefix: str
-    human_prefix: str
-
-    def save_context(self, inputs: dict[str, Any], outputs: dict[str, str]) -> None:
-        """Save context from this conversation to buffer."""
-        inputs = {self.human_prefix: inputs[self.input_key]}
-        outputs = {self.ai_prefix: outputs['response']}
-        documents = self._form_documents(inputs, outputs)
-        self.retriever.add_documents(documents)
+# class LongVectorStoreRetrieverMemory(VectorStoreRetrieverMemory):
+#     memory_key = 'long_memory'
+#     input_key = 'input'
+#
+#     ai_prefix: str
+#     human_prefix: str
+#
+#     def save_context(self, inputs: dict[str, Any], outputs: dict[str, str]) -> None:
+#         """Save context from this conversation to buffer."""
+#         inputs = {self.human_prefix: inputs[self.input_key]}
+#         outputs = {self.ai_prefix: outputs['response']}
+#         documents = self._form_documents(inputs, outputs)
+#         self.retriever.add_documents(documents)
 
 
 class ShortChatMessageHistory(BaseModel, BaseChatMessageHistory):
-    chat_id: int
-    generation_info: dict | None = None
-    new_bot_message: Message | None = None
+    request_messages: list[RequestMessage]
+    openai_response: dict | None = None
+    response_message: ResponseMessage | None = None
 
     @property
     def messages(self) -> list[BaseMessage]:
-        message_list = (
-            session.query(Message).filter_by(chat_id=self.chat_id).order_by(asc(Message.created)).limit(6).all()
-        )
-        message_dict_list = []
+        """Get messages from request and transform them to langchain messages"""
 
-        for message in message_list:
+        message_dict_list = []
+        for message in self.request_messages:
             message_dict = {
                 'type': message.type,
                 'data': {
@@ -60,21 +55,10 @@ class ShortChatMessageHistory(BaseModel, BaseChatMessageHistory):
         return messages_from_dict(message_dict_list)
 
     def add_message(self, message: BaseMessage) -> None:
-        message = MessageCreate(
-            chat_id=self.chat_id,
-            text=message.content,
-            type=message.type,
-            openai_response=self.generation_info,
-        )
-
-        message = Message.from_orm(message)
-        message.create()
-
-        self.new_bot_message = message
+        self.response_message = ResponseMessage(text=message.content, openai_response=self.openai_response)
 
     def clear(self) -> None:
-        msg = 'is not needed'
-        raise NotImplementedError(msg)
+        raise NotImplementedError('is not needed')
 
 
 class ShortConversationBufferMemory(ConversationBufferMemory):
@@ -129,4 +113,4 @@ class CustomCallbackHandler(BaseModel, BaseCallbackHandler):
 
     def on_llm_end(self, response: LLMResult, **_: Any) -> None:
         """Run when LLM ends running."""
-        self.history.generation_info = response.llm_output
+        self.history.openai_response = response.llm_output
