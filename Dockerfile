@@ -4,6 +4,8 @@ FROM python:3.11.4
 # Set the working directory in the container to /app
 WORKDIR /app
 
+RUN pip install -U pytest pytest-docker
+
 RUN pip install poetry==1.5.1
 
 # Cache packages, they don't change often
