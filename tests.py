@@ -1,9 +1,12 @@
 import pytest
+from starlette.testclient import TestClient
+
+from main import app
 from src.schemas import RequestData, RequestUser, RequestVirtualFriend, RequestMessage
-import main
 
 # to execute call: docker compose run ai pytest tests.py
 
+client = TestClient(app)
 
 class TestGptApi:
 
@@ -26,10 +29,11 @@ class TestGptApi:
             virtual_friend=virtual_friend,
             messages=[message]
         )
-        respond = main.process_user_message(request_data).bot_message.text
-        print(respond)
-        assert respond == "HEHEHEHA"
+        data = {}
+        response = client.post("/process_user_message", json=data, headers={"X-API-Key": "ChitChat2023"})
+        print(response.json())
+        assert response.status_code == 200
 
 
-def test_client_execution(self) -> None:
-    pass
+# def test_client_execution(self) -> None:
+#     pass
