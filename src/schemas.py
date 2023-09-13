@@ -10,7 +10,7 @@ class RequestVirtualFriend(BaseModel):
 
 class RequestMessage(BaseModel):
     text: str
-    type: str
+    type: str  # must be chosen from {"human", "ai", "system", "chat", "function"}
 
 class RequestData(BaseModel):
     user: RequestUser
