@@ -11,29 +11,20 @@ client = TestClient(app)
 class TestGptApi:
 
     def test_code_execution(self) -> None:
-        question = "you must respond to this message with word HEHEHEHA"
-        user = RequestUser(
-            nickname="admin",
-            user_message_text=""
-        )
-        virtual_friend = RequestVirtualFriend(
-            name="test",
-            gpt_description=""
-        )
-        message = RequestMessage(
-            text=question,
-            type=""
-        )
-        request_data = RequestData(
-            user=user,
-            virtual_friend=virtual_friend,
-            messages=[message]
-        )
-        data = {}
-        response = client.post("/process_user_message", json=data, headers={"X-API-Key": "ChitChat2023"})
+        request_data = {
+            "user": {
+                "nickname": "admin",
+                "user_message_text": ""
+            },
+            "virtual_friend": {
+                "name": "test",
+                "gpt_description": ""
+            },
+            "messages": [{
+                "text": "test request",
+                "type": "human"
+            }]
+        }
+        response = client.post("/process_user_message", json=request_data, headers={"X-API-Key": "ChitChat2023"})
         print(response.json())
         assert response.status_code == 200
-
-
-# def test_client_execution(self) -> None:
-#     pass

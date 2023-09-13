@@ -25,7 +25,7 @@ def get_api_key(api_key_header: str = Security(api_key_header)) -> str:
 def process_user_message(data: RequestData) -> ResponseData:
     manager = AIManager(
         openai_api_key=openai_api_key,
-        data=data,
+        request_data=data,
     )
 
     bot_message = manager.get_bot_message()
