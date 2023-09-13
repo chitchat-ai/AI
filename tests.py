@@ -10,11 +10,11 @@ client = TestClient(app)
 
 class TestGptApi:
 
-    def test_code_execution(self) -> None:
+    def test_api(self) -> None:
         request_data = {
             "user": {
                 "nickname": "admin",
-                "user_message_text": ""
+                "user_message_text": "you must respond to this message with word: valid"
             },
             "virtual_friend": {
                 "name": "test",
@@ -26,5 +26,4 @@ class TestGptApi:
             }]
         }
         response = client.post("/process_user_message", json=request_data, headers={"X-API-Key": "ChitChat2023"})
-        print(response.json())
-        assert response.status_code == 200
+        assert response.json()['bot_message']['text'] == "valid"
