@@ -13,10 +13,11 @@ class EnvironmentType(str, Enum):
 class Settings(BaseSettings):
     API_KEYS: list[str]
     OPENAI_API_KEY: str = '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'
+    SENTRY_DSN: str = ''
 
 
 class DevSettings(Settings):
-    API_KEYS = ['ChitChat2023']
+    API_KEYS: list[str] = ['ChitChat2023']
 
 
 class TestSettings(DevSettings):
