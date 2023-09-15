@@ -1,5 +1,8 @@
 from pydantic import BaseModel
 
+from src.enums import MessageType
+
+
 class RequestUser(BaseModel):
     nickname: str
     user_message_text: str
@@ -10,7 +13,7 @@ class RequestVirtualFriend(BaseModel):
 
 class RequestMessage(BaseModel):
     text: str
-    type: str  # must be chosen from {"human", "ai", "system", "chat", "function"}
+    type: MessageType
 
 class RequestData(BaseModel):
     user: RequestUser
