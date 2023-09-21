@@ -19,7 +19,7 @@ class ChatDB:
             persist_directory=character_name
         )
 
-    def add_message(self, message) -> None:
+    def add_message(self, message:str) -> None:
         id = self.length
         self.db.add_texts([message], id=[id])
 
@@ -37,7 +37,7 @@ class ChatDB:
         return result
 
 
-    def search_relevant(self, query:str, number_of_messages:int = 1) -> {int:str}:
+    def search_relevant(self, query:str, number_of_messages:int = 1) -> list[str]:
         if number_of_messages > self.length:
             print("ERROR: number_of_messages exceeds length of database. Returning all messages instead")
             number_of_messages = self.length
