@@ -58,15 +58,14 @@ def process_user_message(data: RequestData) -> ResponseData:
 
 
 @app.post("/return_prompt", dependencies=[Security(get_api_prompt_key)])
-#def return_prompt(data: RequestData) -> PromptTemplate:
+
 def return_prompt(data: RequestData) -> PromptTemplate:
     manager = AIManager(
         openai_api_key=openai_api_key,
         request_data=data,
     )
 
-   # bot_message = manager.get_bot_message()
     bots_promt = manager.prompt
 
-   # return PromptTemplate(bot_message=bot_message)
+   # return PromptTemplate( ???? )
     return bots_promt
