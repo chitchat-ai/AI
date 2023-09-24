@@ -1,7 +1,5 @@
 import sys
  
-# adding Folder_2 to the system path
-sys.path.insert(0, '..')
 
 import pytest
 from starlette.testclient import TestClient
@@ -10,7 +8,6 @@ from main import app
 from src.schemas import RequestData, RequestUser, RequestVirtualFriend, RequestMessage
 
 # to execute call: docker compose run ai pytest tests.py
-
 
 
 # both method and file name must fulfill regex "test_*" or "*_test"
