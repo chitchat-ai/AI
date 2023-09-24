@@ -11,6 +11,11 @@ from src.schemas import RequestData, RequestUser, RequestVirtualFriend, RequestM
 
 # to execute call: docker compose run ai pytest tests.py
 
+
+
+# both method and file name must fulfill regex "test_*" or "*_test"
+#  to be executed by pytest automatically
+
 client = TestClient(app)
 
 class TestGptApi:
