@@ -18,15 +18,9 @@ if settings.SENTRY_DSN:
         traces_sample_rate=1.0,
     )
 
-#unsecure     better to make apiKey a global variable
-API_KEYs = [ "ChitChat2023" ]
-
-# for openAI requests
-openai_api_key = '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'
-
 # api key verification
 def get_api_key(api_key_header: str = Security(APIKeyHeader(name="X-API-Key"))) -> str:
-    if api_key_header in API_KEYs:
+    if api_key_header in settings.API_KEYS:
         return api_key_header
     raise HTTPException(status_code=401, detail="Invalid or missing API Key")
 
@@ -37,7 +31,7 @@ async def trigger_error():  # noqa: ANN201
 @app.post("/process_user_message", dependencies=[Security(get_api_key)])
 def process_user_message(data: RequestData) -> ResponseData:
     manager = AIManager(
-        openai_api_key=openai_api_key,
+        openai_api_key=settings.OPENAI_API_KEY,
         request_data=data,
     )
 

@@ -25,7 +25,7 @@ class TestSettings(DevSettings):
 
 
 class ProdSettings(DevSettings):
-    SENTRY_DSN: str = 'https://c2d59edd4669dd0d08c4177b8d662a4e@o4505677338116096.ingest.sentry.io/4505677339688960'
+    SENTRY_DSN: str = 'https://7026c3397c2407b2fa3f4c29bc29b00d@o4505940754366464.ingest.sentry.io/4505940781760512'
 
 
 env = os.getenv('ENV')

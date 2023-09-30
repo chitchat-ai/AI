@@ -43,7 +43,6 @@ class AIManager(BaseModel):
         )
         return self.short_memory.chat_memory.response_message
 
-
     @cached_property
     def human_prefix(self) -> str:
         return self.request_data.user.nickname
