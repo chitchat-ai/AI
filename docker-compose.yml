@@ -7,3 +7,26 @@ services:
       - .:/app
     ports:
       - "9000:9000"
+    depends_on:
+      - mongo
+    networks:
+      - shared_network
+
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=examplepassword
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - shared_network
+
+volumes:
+  mongodb_data: {}
+
+networks:
+  shared_network:
+    external: true

@@ -1,7 +1,10 @@
-from fastapi import FastAPI, HTTPException, Security
+from fastapi import FastAPI, HTTPException, Security, Depends
 from fastapi.security import APIKeyHeader
 
 from settings import settings
+from src.admin.models import Config
+from src.admin.routes import config_router, logs_router
+from src.database import get_database
 from src.manager import AIManager
 from src.schemas import RequestData, ResponseData
 
@@ -29,12 +32,23 @@ async def trigger_error():  # noqa: ANN201
     return 1 / 0
 
 @app.post("/process_user_message", dependencies=[Security(get_api_key)])
-def process_user_message(data: RequestData) -> ResponseData:
+async def process_user_message(data: RequestData, db=Depends(get_database)) -> ResponseData:
+    version = data.virtual_friend.version or "1"
+    config = await db["configs"].find_one({"version": version})
+    if not config:
+        raise HTTPException(status_code=404, detail="Config not found")
+
+    config = Config(**config)
     manager = AIManager(
         openai_api_key=settings.OPENAI_API_KEY,
         request_data=data,
+        db=db,
+        config=config,
     )
 
-    bot_message = manager.get_bot_message()
+    bot_message = await manager.get_bot_message()
 
     return ResponseData(bot_message=bot_message)
+
+app.include_router(config_router)
+app.include_router(logs_router)

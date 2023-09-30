@@ -14,10 +14,14 @@ class Settings(BaseSettings):
     API_KEYS: list[str]
     OPENAI_API_KEY: str = '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'
     SENTRY_DSN: str = ''
+    MONGO_DB_URL: str = ''
+    ADMIN_USERNAME: str = 'admin'
+    ADMIN_PASSWORD: str = 'admin'
 
 
 class DevSettings(Settings):
     API_KEYS: list[str] = ['ChitChat2023']
+    MONGO_DB_URL: str = "mongodb://root:examplepassword@mongo:27017"
 
 
 class TestSettings(DevSettings):

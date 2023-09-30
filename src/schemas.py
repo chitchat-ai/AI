@@ -9,6 +9,7 @@ class RequestUser(BaseModel):
 
 class RequestVirtualFriend(BaseModel):
     name: str
+    version: str = "1"
     gpt_description: str
 
 class RequestMessage(BaseModel):

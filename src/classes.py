@@ -1,7 +1,7 @@
 from typing import Any
 
 from langchain import ConversationChain
-from langchain.callbacks.base import BaseCallbackHandler
+from langchain.callbacks.base import AsyncCallbackHandler
 from langchain.memory import ConversationBufferMemory
 from langchain.schema import (
     BaseChatMessageHistory,
@@ -11,23 +11,10 @@ from langchain.schema import (
 )
 from pydantic import BaseModel, Field, root_validator
 
+from src.admin.utils import create_prompt_log
+from src.admin.models import PromptLog
 from src.enums import MessageType
 from src.schemas import RequestMessage, ResponseMessage
-
-
-# class LongVectorStoreRetrieverMemory(VectorStoreRetrieverMemory):
-#     memory_key = 'long_memory'
-#     input_key = 'input'
-#
-#     ai_prefix: str
-#     human_prefix: str
-#
-#     def save_context(self, inputs: dict[str, Any], outputs: dict[str, str]) -> None:
-#         """Save context from this conversation to buffer."""
-#         inputs = {self.human_prefix: inputs[self.input_key]}
-#         outputs = {self.ai_prefix: outputs['response']}
-#         documents = self._form_documents(inputs, outputs)
-#         self.retriever.add_documents(documents)
 
 
 class ShortChatMessageHistory(BaseModel, BaseChatMessageHistory):
@@ -101,16 +88,33 @@ class CustomConversationChain(ConversationChain):
         return values
 
 
-class CustomCallbackHandler(BaseModel, BaseCallbackHandler):
+class CustomCallbackHandler(BaseModel, AsyncCallbackHandler):
     history: ShortChatMessageHistory
+    db: Any
+    prompt_log: PromptLog | None = None
 
-    def on_chat_model_start(
+    async def on_chat_model_start(
         self,
-        *args: Any,
+        serialized,
+        messages,
+        *,
+        run_id,
+        parent_run_id = None,
+        tags = None,
+        metadata = None,
         **kwargs: Any,
     ) -> Any:
-        pass
+        self.prompt_log = PromptLog(
+            prompt=messages[0][0].content,
+            chat_id=1,
+            config_version=1,
+        )
 
-    def on_llm_end(self, response: LLMResult, **_: Any) -> None:
+    async def on_llm_end(self, response: LLMResult, **_: Any) -> None:
         """Run when LLM ends running."""
+        self.prompt_log.llm_response = response.llm_output
         self.history.openai_response = response.llm_output
+        await create_prompt_log(self.db, self.prompt_log)
+
+    class Config:
+        arbitrary_types_allowed = True

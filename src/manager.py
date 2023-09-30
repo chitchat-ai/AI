@@ -1,10 +1,12 @@
 from functools import cached_property
+from typing import Any
 
 from langchain import PromptTemplate
 from langchain.chat_models import ChatOpenAI
 from langchain.memory import CombinedMemory
 from pydantic import BaseModel
 
+from .admin.models import Config
 from .classes import (
     CustomCallbackHandler,
     CustomConversationChain,
@@ -13,22 +15,24 @@ from .classes import (
 )
 from .schemas import RequestData, ResponseMessage
 
-DESCRIPTION_TEMPLATE = '{description}\n\n'
+# DESCRIPTION_TEMPLATE = '{description}\n\n'
 
 # LONG_MEMORY_TEMPLATE = "Relevant memorized messages:\n\n{long_memory}\n\n"
 
-SHORT_MEMORY_TEMPLATE = 'Current conversation:\n\n{short_memory}\n{human_prefix}: {input}\n{ai_prefix}: '
+# SHORT_MEMORY_TEMPLATE = 'Current conversation:\n\n{short_memory}\n{human_prefix}: {input}\n{ai_prefix}: '
 
-SYSTEM_TEMPLATE = DESCRIPTION_TEMPLATE + SHORT_MEMORY_TEMPLATE
+# SYSTEM_TEMPLATE = DESCRIPTION_TEMPLATE + SHORT_MEMORY_TEMPLATE
 
 
 class AIManager(BaseModel):
     openai_api_key: str
     request_data: RequestData
+    db: Any
+    config: Config
 
-    def get_bot_message(self) -> ResponseMessage:
-        handler = CustomCallbackHandler(history=self.short_memory.chat_memory)
-        llm = ChatOpenAI(temperature=0.8, openai_api_key=self.openai_api_key)
+    async def get_bot_message(self) -> ResponseMessage:
+        handler = CustomCallbackHandler(history=self.short_memory.chat_memory, db=self.db)
+        llm = ChatOpenAI(temperature=self.config.temperature, openai_api_key=self.openai_api_key)
 
         conversation = CustomConversationChain(
             llm=llm,
@@ -36,12 +40,13 @@ class AIManager(BaseModel):
             verbose=True,
             prompt=self.prompt,
         )
-        conversation.run(
+        await conversation.arun(
             description=self.description,
             input=self.user_message_text,
             callbacks=[handler],
         )
         return self.short_memory.chat_memory.response_message
+
 
     @cached_property
     def human_prefix(self) -> str:
@@ -75,7 +80,7 @@ class AIManager(BaseModel):
     @cached_property
     def short_memory(self) -> ShortConversationBufferMemory:
         return ShortConversationBufferMemory(
-            chat_memory=ShortChatMessageHistory(request_messages=self.request_data.messages),
+            chat_memory=ShortChatMessageHistory(request_messages=self.request_data.messages[:-1]),
             human_prefix=self.human_prefix,
             ai_prefix=self.ai_prefix,
         )
@@ -96,7 +101,7 @@ class AIManager(BaseModel):
                 'human_prefix',
                 'ai_prefix',
             ],
-            template=SYSTEM_TEMPLATE,
+            template=self.config.prompt_template,
         )
         return prompt.partial(human_prefix=self.human_prefix, ai_prefix=self.ai_prefix)
 
