@@ -1,82 +1,58 @@
 from typing import Any
 
-from langchain import ConversationChain
+from langchain.chains import ConversationChain
 from langchain.callbacks.base import BaseCallbackHandler
-from langchain.memory import ConversationBufferMemory
-from langchain.schema import (
-    BaseChatMessageHistory,
-    BaseMessage,
-    LLMResult,
-    messages_from_dict,
-)
-from pydantic import BaseModel, Field, root_validator
+from langchain.memory import VectorStoreRetrieverMemory
+from langchain.schema import BaseMemory
+from langchain.vectorstores.base import VectorStoreRetriever
+from pydantic import Field, root_validator
 
-from src.enums import MessageType
-from src.schemas import RequestMessage, ResponseMessage
+from src.chroma import MemoryChroma
 
 
-# class LongVectorStoreRetrieverMemory(VectorStoreRetrieverMemory):
-#     memory_key = 'long_memory'
-#     input_key = 'input'
-#
-#     ai_prefix: str
-#     human_prefix: str
-#
-#     def save_context(self, inputs: dict[str, Any], outputs: dict[str, str]) -> None:
-#         """Save context from this conversation to buffer."""
-#         inputs = {self.human_prefix: inputs[self.input_key]}
-#         outputs = {self.ai_prefix: outputs['response']}
-#         documents = self._form_documents(inputs, outputs)
-#         self.retriever.add_documents(documents)
+class ChromaVectorStoreRetriever(VectorStoreRetriever):
+    vectorstore: MemoryChroma
 
 
-class ShortChatMessageHistory(BaseModel, BaseChatMessageHistory):
-    request_messages: list[RequestMessage]
-    openai_response: dict | None = None
-    response_message: ResponseMessage | None = None
+class ChromaLongMemory(VectorStoreRetrieverMemory):
+    retriever: ChromaVectorStoreRetriever = Field(exclude=True)
+
+    memory_key = 'long_memory'
+    input_key = 'input'
+
+    ai_prefix: str
+    human_prefix: str
+
+    def save_context(self, inputs: dict[str, Any], outputs: dict[str, str]) -> None:
+        """Save context from this conversation to buffer."""
+        inputs = {self.human_prefix: inputs[self.input_key]}
+        outputs = {self.ai_prefix: outputs['response']}
+        documents = self._form_documents(inputs, outputs)
+        self.retriever.add_documents(documents)
+
+
+class ChromaShortMemory(BaseMemory):
+    memory_key: str = 'short_memory'
+
+    vectorstore: MemoryChroma
 
     @property
-    def messages(self) -> list[BaseMessage]:
-        """Get messages from request and transform them to langchain messages"""
+    def memory_variables(self) -> list[str]:
+        return [self.memory_key]
 
-        message_dict_list = []
-        for message in self.request_messages:
-            message_dict = {
-                'type': message.type,
-                'data': {
-                    'content': message.text,
-                },
-            }
-            if message.type == MessageType.CHAT:
-                message_dict['data']['role'] = 'System message'
+    def load_memory_variables(self, inputs: dict[str, Any]) -> dict[str, str]:
+        last_msg_blocks = self.vectorstore.get_last_message_blocks()
 
-            message_dict_list.append(message_dict)
+        return {self.memory_key: '\n'.join([block for block in last_msg_blocks])}
 
-        return messages_from_dict(message_dict_list)
-
-    def add_message(self, message: BaseMessage) -> None:
-        self.response_message = ResponseMessage(text=message.content, openai_response=self.openai_response)
+    def save_context(self, *_, **__) -> None:
+        """This memory is read-only."""
 
     def clear(self) -> None:
-        raise NotImplementedError('is not needed')
-
-
-class ShortConversationBufferMemory(ConversationBufferMemory):
-    memory_key = 'short_memory'
-    input_key = 'input'
-    chat_memory: ShortChatMessageHistory = Field(default_factory=ShortChatMessageHistory)
+        """This memory is read-only."""
 
 
 class CustomConversationChain(ConversationChain):
-    # def create_outputs(self, response: LLMResult):
-    #     """Create outputs from response."""
-    #     print(response, response.generations)
-    #     return [
-    #         # Get the text of the top generated string.
-    #         {self.output_key: generation[0].text}
-    #         for generation in response.generations
-    #     ]
-
     @root_validator()
     def validate_prompt_input_variables(cls, values: dict) -> dict:
         """Validate that prompt input variables are consistent."""
@@ -101,8 +77,7 @@ class CustomConversationChain(ConversationChain):
         return values
 
 
-class CustomCallbackHandler(BaseModel, BaseCallbackHandler):
-    history: ShortChatMessageHistory
+class CustomCallbackHandler(BaseCallbackHandler):
 
     def on_chat_model_start(
         self,
@@ -111,6 +86,6 @@ class CustomCallbackHandler(BaseModel, BaseCallbackHandler):
     ) -> Any:
         pass
 
-    def on_llm_end(self, response: LLMResult, **_: Any) -> None:
-        """Run when LLM ends running."""
-        self.history.openai_response = response.llm_output
+    # def on_llm_end(self, response: LLMResult, **_: Any) -> None:
+    #     """Run when LLM ends running."""
+    #     self.history.openai_response = response.llm_output

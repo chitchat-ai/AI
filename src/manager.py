@@ -1,25 +1,25 @@
 from functools import cached_property
 
-from langchain import PromptTemplate
 from langchain.chat_models import ChatOpenAI
 from langchain.memory import CombinedMemory
 from pydantic import BaseModel
+from langchain.prompts import PromptTemplate
 
+from .chroma import MemoryChroma
 from .classes import (
     CustomCallbackHandler,
-    CustomConversationChain,
-    ShortChatMessageHistory,
-    ShortConversationBufferMemory,
+    CustomConversationChain, ChromaVectorStoreRetriever, ChromaLongMemory,
+    ChromaShortMemory,
 )
 from .schemas import RequestData, ResponseMessage
 
 DESCRIPTION_TEMPLATE = '{description}\n\n'
 
-# LONG_MEMORY_TEMPLATE = "Relevant memorized messages:\n\n{long_memory}\n\n"
+LONG_MEMORY_TEMPLATE = "Relevant memorized messages:\n\n{long_memory}\n\n"
 
 SHORT_MEMORY_TEMPLATE = 'Current conversation:\n\n{short_memory}\n{human_prefix}: {input}\n{ai_prefix}: '
 
-SYSTEM_TEMPLATE = DESCRIPTION_TEMPLATE + SHORT_MEMORY_TEMPLATE
+SYSTEM_TEMPLATE = DESCRIPTION_TEMPLATE + LONG_MEMORY_TEMPLATE + SHORT_MEMORY_TEMPLATE
 
 
 class AIManager(BaseModel):
@@ -27,7 +27,7 @@ class AIManager(BaseModel):
     request_data: RequestData
 
     def get_bot_message(self) -> ResponseMessage:
-        handler = CustomCallbackHandler(history=self.short_memory.chat_memory)
+        handler = CustomCallbackHandler()
         llm = ChatOpenAI(temperature=0.8, openai_api_key=self.openai_api_key)
 
         conversation = CustomConversationChain(
@@ -36,12 +36,12 @@ class AIManager(BaseModel):
             verbose=True,
             prompt=self.prompt,
         )
-        conversation.run(
+        message_from_ai = conversation.run(
             description=self.description,
             input=self.user_message_text,
             callbacks=[handler],
         )
-        return self.short_memory.chat_memory.response_message
+        return ResponseMessage(text=message_from_ai)
 
 
     @cached_property
@@ -60,30 +60,34 @@ class AIManager(BaseModel):
     def user_message_text(self) -> str:
         return self.request_data.user.user_message_text
 
-    # @cached_property
-    # def long_memory(self) -> LongVectorStoreRetrieverMemory:
-    #     vector_store = CustomLanceDB(
-    #         chat_id=self.chat_id, embeddings=OpenAIEmbeddings(openai_api_key=self.openai_api_key)
-    #     )
-    #     retriever = vector_store.as_retriever(search_kwargs=dict(k=2))
-    #
-    #     return LongVectorStoreRetrieverMemory(
-    #         retriever=retriever,
-    #         human_prefix=self.human_prefix,
-    #         ai_prefix=self.ai_prefix,
-    #     )
+    @cached_property
+    def chroma(self):
+        return MemoryChroma(chat_id=self.request_data.chat.id)
 
     @cached_property
-    def short_memory(self) -> ShortConversationBufferMemory:
-        return ShortConversationBufferMemory(
-            chat_memory=ShortChatMessageHistory(request_messages=self.request_data.messages),
-            human_prefix=self.human_prefix,
+    def long_memory(self) -> ChromaLongMemory:
+        retriever = ChromaVectorStoreRetriever(
+            vectorstore=self.chroma,
+            search_kwargs=dict(k=3, filter=self.chroma.exclude_last_msg_blocks_filter)
+        )
+
+        return ChromaLongMemory(
+            retriever=retriever,
             ai_prefix=self.ai_prefix,
+            human_prefix=self.human_prefix,
+        )
+
+    @cached_property
+    def short_memory(self) -> ChromaShortMemory:
+        return ChromaShortMemory(
+            vectorstore=self.chroma,
+            ai_prefix=self.ai_prefix,
+            human_prefix=self.human_prefix
         )
 
     @cached_property
     def memory(self) -> CombinedMemory:
-        return CombinedMemory(memories=[self.short_memory])
+        return CombinedMemory(memories=[self.short_memory, self.long_memory])
 
 
     @cached_property
@@ -91,7 +95,7 @@ class AIManager(BaseModel):
         prompt = PromptTemplate(
             input_variables=[
                 'description',
-                # 'long_memory',
+                'long_memory',
                 'short_memory',
                 'input',
                 'human_prefix',
