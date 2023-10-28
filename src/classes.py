@@ -1,12 +1,14 @@
 from typing import Any
 
 from langchain.chains import ConversationChain
-from langchain.callbacks.base import BaseCallbackHandler
+from langchain.callbacks.base import AsyncCallbackHandler
 from langchain.memory import VectorStoreRetrieverMemory
-from langchain.schema import BaseMemory
+from langchain.schema import BaseMemory, LLMResult
 from langchain.vectorstores.base import VectorStoreRetriever
-from pydantic import Field, root_validator
+from pydantic import Field, root_validator, BaseModel
 
+from src.admin.models import PromptLog
+from src.admin.utils import create_prompt_log
 from src.chroma import MemoryChroma
 
 
@@ -77,15 +79,31 @@ class CustomConversationChain(ConversationChain):
         return values
 
 
-class CustomCallbackHandler(BaseCallbackHandler):
+class CustomCallbackHandler(BaseModel, AsyncCallbackHandler):
+    db: Any
+    prompt_log: PromptLog | None = None
 
-    def on_chat_model_start(
+    async def on_chat_model_start(
         self,
-        *args: Any,
+        serialized,
+        messages,
+        *,
+        run_id,
+        parent_run_id = None,
+        tags = None,
+        metadata = None,
         **kwargs: Any,
     ) -> Any:
-        pass
+        self.prompt_log = PromptLog(
+            prompt=messages[0][0].content,
+            chat_id=1,
+            config_version=1,
+        )
 
-    # def on_llm_end(self, response: LLMResult, **_: Any) -> None:
-    #     """Run when LLM ends running."""
-    #     self.history.openai_response = response.llm_output
+    async def on_llm_end(self, response: LLMResult, **_: Any) -> None:
+        """Run when LLM ends running."""
+        self.prompt_log.llm_response = response.llm_output
+        await create_prompt_log(self.db, self.prompt_log)
+
+    class Config:
+        arbitrary_types_allowed = True

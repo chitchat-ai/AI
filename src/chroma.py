@@ -10,13 +10,19 @@ class MemoryChroma(Chroma):
 
     last_message_block_count: int
 
-    def __init__(self, chat_id: str, last_message_block_count: int = 3) -> None:
+    def __init__(
+        self,
+        chat_id: str,
+        last_message_block_count: int,
+        embedding_function: OpenAIEmbeddings,
+        client: chromadb.HttpClient
+    ) -> None:
         collection_name = f"{self.COLLECTION_NAME_PREFIX}_{chat_id}"
 
         super().__init__(
             collection_name=collection_name,
-            embedding_function=OpenAIEmbeddings(openai_api_key="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"),
-            client=chromadb.HttpClient(host="chroma", port="8000"),
+            embedding_function=embedding_function,
+            client=client,
         )
 
         if last_message_block_count > self.length:
