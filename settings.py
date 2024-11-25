@@ -12,7 +12,7 @@ class EnvironmentType(str, Enum):
 
 class Settings(BaseSettings):
     API_KEYS: list[str]
-    OPENAI_API_KEY: str = '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'
+    OPENAI_API_KEY: str = ''
     SENTRY_DSN: str = ''
     DATABASE_URL: str = ''
     ADMIN_USERNAME: str = 'admin'
@@ -21,7 +21,7 @@ class Settings(BaseSettings):
 
 class DevSettings(Settings):
     API_KEYS: list[str] = ['ChitChat2023']
-    DATABASE_URL: str = "mongodb://root:examplepassword@mongo:27017"
+    DATABASE_URL: str = ""
 
 
 class TestSettings(DevSettings):
@@ -29,7 +29,7 @@ class TestSettings(DevSettings):
 
 
 class ProdSettings(DevSettings):
-    SENTRY_DSN: str = 'https://7026c3397c2407b2fa3f4c29bc29b00d@o4505940754366464.ingest.sentry.io/4505940781760512'
+    SENTRY_DSN: str = ''
 
 
 env = os.getenv('ENV')
