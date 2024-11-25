@@ -1,7 +1,5 @@
 from pydantic import BaseModel
 
-from src.enums import MessageType
-
 
 class RequestUser(BaseModel):
     nickname: str
@@ -12,14 +10,13 @@ class RequestVirtualFriend(BaseModel):
     version: str = "1"
     gpt_description: str
 
-class RequestMessage(BaseModel):
-    text: str
-    type: MessageType
+class RequestChat(BaseModel):
+    id: str
 
 class RequestData(BaseModel):
     user: RequestUser
     virtual_friend: RequestVirtualFriend
-    messages: list[RequestMessage]
+    chat: RequestChat
 
 
 class ResponseMessage(BaseModel):

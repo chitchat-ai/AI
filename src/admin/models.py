@@ -6,6 +6,8 @@ class Config(BaseModel):
     version: str
     prompt_template: str
     temperature: float
+    short_memory_length: int = 3
+    long_memory_length: int = 3
 
     @validator("temperature")
     def temperature_must_be_between_0_and_1(cls, v):

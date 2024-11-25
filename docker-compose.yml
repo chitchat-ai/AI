@@ -1,5 +1,11 @@
 version: '3.8'
 
+networks:
+  net:
+    driver: bridge
+  shared_network:
+      external: true
+
 services:
   ai:
     build: .
@@ -8,25 +14,39 @@ services:
     ports:
       - "9000:9000"
     depends_on:
+      - chroma
       - mongo
     networks:
+      - net
       - shared_network
 
   mongo:
     image: mongo:latest
     ports:
-      - "27017:27017"
+        - "27017:27017"
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=root
-      - MONGO_INITDB_ROOT_PASSWORD=examplepassword
+        - MONGO_INITDB_ROOT_USERNAME=root
+        - MONGO_INITDB_ROOT_PASSWORD=examplepassword
     volumes:
-      - mongodb_data:/data/db
+        - mongodb_data:/data/db
     networks:
-      - shared_network
+        - shared_network
+
+  chroma:
+    image: ghcr.io/chroma-core/chroma:latest
+    volumes:
+      # Default configuration for persist_directory in chromadb/config.py
+      # Currently it's located in "/chroma/chroma/"
+      - chroma_persistent_folder:/chroma/chroma/
+    ports:
+      - "8000:8000"
+    networks:
+      - net
 
 volumes:
   mongodb_data: {}
+  backups:
+    driver: local
+  chroma_persistent_folder:
+    driver: local
 
-networks:
-  shared_network:
-    external: true

@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     DATABASE_URL: str = ''
     ADMIN_USERNAME: str = 'admin'
     ADMIN_PASSWORD: str = 'admin'
+    CHROMA_HOST: str = 'chroma'
+    CHROMA_PORT: str = '8000'
 
 
 class DevSettings(Settings):
